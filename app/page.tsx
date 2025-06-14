@@ -1,103 +1,234 @@
-import Image from "next/image";
+// pages/index.js
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from 'react';
+import Head from 'next/head';
+import Tesseract from 'tesseract.js';
+
+// --- STYLING (So it doesn't look completely broken) ---
+// We put this here to keep it all in one file for simplicity.
+const styles = {
+  container: { fontFamily: 'sans-serif', maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' },
+  header: { textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '1rem' },
+  section: { backgroundColor: '#f9f9f9', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #eee' },
+  sectionTitle: { marginTop: '0', borderBottom: '2px solid #0070f3', display: 'inline-block', paddingBottom: '0.5rem', marginBottom: '1rem' },
+  button: { backgroundColor: '#0070f3', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontSize: '1rem' },
+  input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', marginRight: '10px', width: '200px' },
+  table: { width: '100%', borderCollapse: 'collapse', marginTop: '1rem' },
+  th: { borderBottom: '2px solid #ddd', padding: '8px', textAlign: 'left', backgroundColor: '#f2f2f2' },
+  td: { borderBottom: '1px solid #ddd', padding: '8px' },
+  editableInput: { width: '90%', border: '1px solid #ccc', padding: '4px' },
+  personCard: { border: '1px solid #ddd', borderRadius: '5px', padding: '1rem', marginBottom: '1rem' },
+  spinner: { border: '4px solid #f3f3f3', borderTop: '4px solid #0070f3', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '20px auto' },
+  '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } }
+};
+
+// --- MAIN APPLICATION COMPONENT ---
+export default function HomePage() {
+  // State Management
+  const [menuImage, setMenuImage] = useState(null);
+  const [ocrText, setOcrText] = useState('');
+  const [menuItems, setMenuItems] = useState([]);
+  const [people, setPeople] = useState([]);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [tax, setTax] = useState(10); // Default tax
+  const [tip, setTip] = useState(15); // Default tip
+
+  // --- CORE FUNCTIONS ---
+
+  // 1. Handle image upload and trigger OCR
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setMenuImage(URL.createObjectURL(file));
+    setIsLoading(true);
+    setMenuItems([]); // Clear previous menu
+
+    Tesseract.recognize(file, 'eng')
+      .then(({ data: { text } }) => {
+        setOcrText(text);
+        parseMenuText(text);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setIsLoading(false);
+        alert('Error during OCR processing.');
+      });
+  };
+
+  // 2. Parse the raw OCR text into a structured menu
+  const parseMenuText = (text) => {
+    const lines = text.split('\n');
+    const items = [];
+    // Regex to find prices (e.g., 25, 25k, 14.50) at the end of a line
+    const priceRegex = /(\d+(?:[.,]\d{1,2})?)\s*K?$/i;
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      const match = trimmedLine.match(priceRegex);
+      if (match) {
+        const priceStr = match[1].replace(/,/g, '.'); // Normalize comma to dot
+        const price = parseFloat(priceStr);
+        const item = trimmedLine.substring(0, match.index).trim();
+        if (item && !isNaN(price)) {
+          items.push({ id: Date.now() + index, item, price });
+        }
+      }
+    });
+    setMenuItems(items);
+  };
+  
+  // 3. Handle edits in the menu table
+  const handleMenuChange = (id, field, value) => {
+    setMenuItems(currentMenu => 
+      currentMenu.map(item => 
+        item.id === id ? { ...item, [field]: (field === 'price' ? parseFloat(value) || 0 : value) } : item
+      )
+    );
+  };
+  
+  // 4. Add a person to the bill
+  const addPerson = () => {
+    if (newPersonName.trim() === '') return;
+    setPeople([...people, { id: Date.now(), name: newPersonName.trim(), orders: [] }]);
+    setNewPersonName('');
+  };
+
+  // 5. Assign an order to a person
+  const addOrderToPerson = (personId, menuItemId) => {
+    if (!menuItemId) return;
+    const menuItem = menuItems.find(m => m.id === parseInt(menuItemId));
+    setPeople(currentPeople =>
+      currentPeople.map(p =>
+        p.id === personId ? { ...p, orders: [...p.orders, menuItem] } : p
+      )
+    );
+  };
+  
+  // 6. Calculate subtotal for a single person
+  const calculateSubtotal = (orders) => {
+    return orders.reduce((total, order) => total + order.price, 0);
+  };
+
+  // --- RENDER ---
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      {/* We need this style tag for the spinner animation */}
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <Head>
+        <title>Menu Bill Splitter</title>
+      </Head>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <h1>Menu Bill Splitter</h1>
+          <p>Upload a menu, assign orders, and split the bill perfectly.</p>
+        </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {/* --- STEP 1: UPLOAD --- */}
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>Step 1: Upload Menu</h2>
+          <input type="file" accept="image/*" onChange={handleImageUpload} />
+          {isLoading && (
+            <div>
+              <p>Reading your menu... (This may take a moment)</p>
+              <div style={styles.spinner}></div>
+            </div>
+          )}
+        </section>
+        
+        {/* --- STEP 2: REVIEW MENU (Only shows after OCR) --- */}
+        {menuItems.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>Step 2: Review & Correct Menu</h2>
+            <p>The AI has extracted the menu. Please correct any errors below.</p>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Item</th>
+                  <th style={styles.th}>Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {menuItems.map(item => (
+                  <tr key={item.id}>
+                    <td style={styles.td}><input style={styles.editableInput} type="text" value={item.item} onChange={(e) => handleMenuChange(item.id, 'item', e.target.value)} /></td>
+                    <td style={styles.td}><input style={styles.editableInput} type="number" step="0.01" value={item.price} onChange={(e) => handleMenuChange(item.id, 'price', e.target.value)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {/* --- STEP 3: BUILD THE BILL (Only shows after menu is ready) --- */}
+        {menuItems.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>Step 3: Build the Bill</h2>
+            <div>
+              <input style={styles.input} type="text" value={newPersonName} onChange={(e) => setNewPersonName(e.target.value)} placeholder="Enter person's name" />
+              <button style={styles.button} onClick={addPerson}>Add Person</button>
+            </div>
+            
+            <div style={{marginTop: '1.5rem'}}>
+              {people.map(person => {
+                const subtotal = calculateSubtotal(person.orders);
+                return (
+                  <div key={person.id} style={styles.personCard}>
+                    <h3>{person.name} - Subtotal: ${subtotal.toFixed(2)}</h3>
+                    <ul>
+                      {person.orders.map((order, index) => (
+                        <li key={index}>{order.item} - ${order.price.toFixed(2)}</li>
+                      ))}
+                    </ul>
+                    <select onChange={(e) => addOrderToPerson(person.id, e.target.value)} style={{marginRight: '10px'}}>
+                      <option value="">-- Assign new item --</option>
+                      {menuItems.map(item => <option key={item.id} value={item.id}>{item.item} (${item.price})</option>)}
+                    </select>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+        
+        {/* --- STEP 4: FINAL SUMMARY (Only shows if people have been added) --- */}
+        {people.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>Step 4: Final Summary</h2>
+            <div>
+              <label>Tax (%): </label>
+              <input style={styles.input} type="number" value={tax} onChange={(e) => setTax(parseFloat(e.target.value) || 0)} />
+              <label>Tip (%): </label>
+              <input style={styles.input} type="number" value={tip} onChange={(e) => setTip(parseFloat(e.target.value) || 0)} />
+            </div>
+            
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.th}>Name</th>
+                  <th style={styles.th}>Subtotal</th>
+                  <th style={styles.th}>Total Due (inc. Tax & Tip)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {people.map(person => {
+                  const subtotal = calculateSubtotal(person.orders);
+                  const totalDue = subtotal * (1 + tax / 100 + tip / 100);
+                  return (
+                    <tr key={person.id}>
+                      <td style={styles.td}><strong>{person.name}</strong></td>
+                      <td style={styles.td}>${subtotal.toFixed(2)}</td>
+                      <td style={styles.td}><strong>${totalDue.toFixed(2)}</strong></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </section>
+        )}
+      </div>
+    </>
   );
 }
