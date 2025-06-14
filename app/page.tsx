@@ -1,13 +1,27 @@
-// pages/index.js
-"use client"
+// app/page.tsx
 
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState } from 'react';
 import Head from 'next/head';
 import Tesseract from 'tesseract.js';
 
+// --- TYPE DEFINITIONS for TypeScript ---
+interface MenuItem {
+  id: number;
+  item: string;
+  price: number;
+}
+
+interface Person {
+  id: number;
+  name: string;
+  orders: MenuItem[];
+}
+
+
 // --- STYLING (So it doesn't look completely broken) ---
-// We put this here to keep it all in one file for simplicity.
-const styles = {
+const styles: { [key: string]: React.CSSProperties } = {
   container: { fontFamily: 'sans-serif', maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' },
   header: { textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '1rem' },
   section: { backgroundColor: '#f9f9f9', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #eee' },
@@ -20,16 +34,13 @@ const styles = {
   editableInput: { width: '90%', border: '1px solid #ccc', padding: '4px' },
   personCard: { border: '1px solid #ddd', borderRadius: '5px', padding: '1rem', marginBottom: '1rem' },
   spinner: { border: '4px solid #f3f3f3', borderTop: '4px solid #0070f3', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '20px auto' },
-  '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } }
 };
 
 // --- MAIN APPLICATION COMPONENT ---
 export default function HomePage() {
   // State Management
-  const [menuImage, setMenuImage] = useState(null);
-  const [ocrText, setOcrText] = useState('');
-  const [menuItems, setMenuItems] = useState([]);
-  const [people, setPeople] = useState([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
   const [newPersonName, setNewPersonName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [tax, setTax] = useState(10); // Default tax
@@ -38,16 +49,14 @@ export default function HomePage() {
   // --- CORE FUNCTIONS ---
 
   // 1. Handle image upload and trigger OCR
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { // <-- Added type for 'e'
+    const file = e.target.files?.[0];
     if (!file) return;
-    setMenuImage(URL.createObjectURL(file));
     setIsLoading(true);
     setMenuItems([]); // Clear previous menu
 
     Tesseract.recognize(file, 'eng')
       .then(({ data: { text } }) => {
-        setOcrText(text);
         parseMenuText(text);
         setIsLoading(false);
       })
@@ -59,17 +68,16 @@ export default function HomePage() {
   };
 
   // 2. Parse the raw OCR text into a structured menu
-  const parseMenuText = (text) => {
+  const parseMenuText = (text: string) => { // <-- Added type for 'text'
     const lines = text.split('\n');
-    const items = [];
-    // Regex to find prices (e.g., 25, 25k, 14.50) at the end of a line
+    const items: MenuItem[] = [];
     const priceRegex = /(\d+(?:[.,]\d{1,2})?)\s*K?$/i;
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
       const match = trimmedLine.match(priceRegex);
       if (match) {
-        const priceStr = match[1].replace(/,/g, '.'); // Normalize comma to dot
+        const priceStr = match[1].replace(/,/g, '.');
         const price = parseFloat(priceStr);
         const item = trimmedLine.substring(0, match.index).trim();
         if (item && !isNaN(price)) {
@@ -81,7 +89,7 @@ export default function HomePage() {
   };
   
   // 3. Handle edits in the menu table
-  const handleMenuChange = (id, field, value) => {
+  const handleMenuChange = (id: number, field: 'item' | 'price', value: string) => { // <-- Added types
     setMenuItems(currentMenu => 
       currentMenu.map(item => 
         item.id === id ? { ...item, [field]: (field === 'price' ? parseFloat(value) || 0 : value) } : item
@@ -97,9 +105,10 @@ export default function HomePage() {
   };
 
   // 5. Assign an order to a person
-  const addOrderToPerson = (personId, menuItemId) => {
+  const addOrderToPerson = (personId: number, menuItemId: string) => { // <-- Added types
     if (!menuItemId) return;
     const menuItem = menuItems.find(m => m.id === parseInt(menuItemId));
+    if(!menuItem) return;
     setPeople(currentPeople =>
       currentPeople.map(p =>
         p.id === personId ? { ...p, orders: [...p.orders, menuItem] } : p
@@ -108,14 +117,13 @@ export default function HomePage() {
   };
   
   // 6. Calculate subtotal for a single person
-  const calculateSubtotal = (orders) => {
+  const calculateSubtotal = (orders: MenuItem[]) => { // <-- Added type for 'orders'
     return orders.reduce((total, order) => total + order.price, 0);
   };
 
   // --- RENDER ---
   return (
     <>
-      {/* We need this style tag for the spinner animation */}
       <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
       <Head>
         <title>Menu Bill Splitter</title>
@@ -126,7 +134,6 @@ export default function HomePage() {
           <p>Upload a menu, assign orders, and split the bill perfectly.</p>
         </header>
 
-        {/* --- STEP 1: UPLOAD --- */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Step 1: Upload Menu</h2>
           <input type="file" accept="image/*" onChange={handleImageUpload} />
@@ -138,7 +145,6 @@ export default function HomePage() {
           )}
         </section>
         
-        {/* --- STEP 2: REVIEW MENU (Only shows after OCR) --- */}
         {menuItems.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 2: Review & Correct Menu</h2>
@@ -162,7 +168,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* --- STEP 3: BUILD THE BILL (Only shows after menu is ready) --- */}
         {menuItems.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 3: Build the Bill</h2>
@@ -193,7 +198,6 @@ export default function HomePage() {
           </section>
         )}
         
-        {/* --- STEP 4: FINAL SUMMARY (Only shows if people have been added) --- */}
         {people.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 4: Final Summary</h2>
