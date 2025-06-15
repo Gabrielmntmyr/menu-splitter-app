@@ -1,4 +1,4 @@
-/ app/page.tsx
+// app/page.tsx
 
 "use client";
 
@@ -27,21 +27,16 @@ const styles: { [key: string]: React.CSSProperties } = {
   section: { backgroundColor: '#f9f9f9', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #eee' },
   sectionTitle: { marginTop: '0', borderBottom: '2px solid #0070f3', display: 'inline-block', paddingBottom: '0.5rem', marginBottom: '1rem' },
   button: { backgroundColor: '#0070f3', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontSize: '1rem' },
-  // --- NEW STYLE for the delete button ---
   deleteButton: { 
-    backgroundColor: '#e53e3e', // A red color
-    color: 'white', 
-    border: 'none', 
-    padding: '4px 10px', 
-    borderRadius: '4px', 
-    cursor: 'pointer', 
-    fontSize: '0.8rem',
-    marginLeft: '1rem'
+    backgroundColor: '#e53e3e', color: 'white', border: 'none', padding: '4px 10px', 
+    borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', marginLeft: '1rem'
   },
   input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', marginRight: '10px', width: '200px' },
   table: { width: '100%', borderCollapse: 'collapse', marginTop: '1rem' },
   th: { borderBottom: '2px solid #ddd', padding: '8px', textAlign: 'left', backgroundColor: '#f2f2f2' },
   td: { borderBottom: '1px solid #ddd', padding: '8px' },
+  // --- NEW STYLE for the total row ---
+  totalRow: { borderTop: '2px solid #333', fontWeight: 'bold' },
   editableInput: { width: '90%', border: '1px solid #ccc', padding: '4px' },
   personCard: { border: '1px solid #ddd', borderRadius: '5px', padding: '1rem', marginBottom: '1rem' },
   personCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
@@ -110,7 +105,6 @@ export default function HomePage() {
     setNewPersonName('');
   };
 
-  // --- NEW FUNCTION to delete a person ---
   const deletePerson = (personIdToDelete: number) => {
     setPeople(currentPeople =>
       currentPeople.filter(person => person.id !== personIdToDelete)
@@ -131,6 +125,10 @@ export default function HomePage() {
   const calculateSubtotal = (orders: MenuItem[]) => {
     return orders.reduce((total, order) => total + order.price, 0);
   };
+  
+  // --- NEW: Calculate grand totals ---
+  const totalSubtotal = people.reduce((acc, person) => acc + calculateSubtotal(person.orders), 0);
+  const grandTotal = totalSubtotal * (1 + tax / 100 + tip / 100);
 
   // --- RENDER ---
   return (
@@ -145,26 +143,21 @@ export default function HomePage() {
           <p>Upload a menu, assign orders, and split the bill perfectly.</p>
         </header>
 
-        {/* ... (Step 1 and Step 2 sections remain the same) ... */}
+        {/* ... (Step 1, 2, and 3 sections remain the same) ... */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Step 1: Upload Menu</h2>
           <input type="file" accept="image/*" onChange={handleImageUpload} />
           {isLoading && (
-            <div>
-              <p>Reading your menu... (This may take a moment)</p>
-              <div style={styles.spinner}></div>
-            </div>
+            <div><p>Reading your menu...</p><div style={styles.spinner}></div></div>
           )}
         </section>
         
         {menuItems.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 2: Review & Correct Menu</h2>
-            <p>The AI has extracted the menu. Please correct any errors below.</p>
+            <p>Please correct any errors below.</p>
             <table style={styles.table}>
-              <thead>
-                <tr><th style={styles.th}>Item</th><th style={styles.th}>Price</th></tr>
-              </thead>
+              <thead><tr><th style={styles.th}>Item</th><th style={styles.th}>Price</th></tr></thead>
               <tbody>
                 {menuItems.map(item => (
                   <tr key={item.id}>
@@ -177,7 +170,6 @@ export default function HomePage() {
           </section>
         )}
 
-
         {menuItems.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 3: Build the Bill</h2>
@@ -185,21 +177,17 @@ export default function HomePage() {
               <input style={styles.input} type="text" value={newPersonName} onChange={(e) => setNewPersonName(e.target.value)} placeholder="Enter person's name" />
               <button style={styles.button} onClick={addPerson}>Add Person</button>
             </div>
-            
             <div style={{marginTop: '1.5rem'}}>
               {people.map(person => {
                 const subtotal = calculateSubtotal(person.orders);
                 return (
                   <div key={person.id} style={styles.personCard}>
-                    {/* --- UPDATED PART: Person header with delete button --- */}
                     <div style={styles.personCardHeader}>
                       <h3>{person.name} - Subtotal: ${subtotal.toFixed(2)}</h3>
                       <button style={styles.deleteButton} onClick={() => deletePerson(person.id)}>Delete</button>
                     </div>
                     <ul>
-                      {person.orders.map((order, index) => (
-                        <li key={index}>{order.item} - ${order.price.toFixed(2)}</li>
-                      ))}
+                      {person.orders.map((order, index) => (<li key={index}>{order.item} - ${order.price.toFixed(2)}</li>))}
                     </ul>
                     <select onChange={(e) => addOrderToPerson(person.id, e.target.value)} style={{marginRight: '10px'}}>
                       <option value="">-- Assign new item --</option>
@@ -212,7 +200,7 @@ export default function HomePage() {
           </section>
         )}
         
-        {/* ... (Step 4 section remains the same) ... */}
+        {/* --- UPDATED: Step 4 now includes a grand total row --- */}
         {people.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 4: Final Summary</h2>
@@ -235,10 +223,16 @@ export default function HomePage() {
                     <tr key={person.id}>
                       <td style={styles.td}><strong>{person.name}</strong></td>
                       <td style={styles.td}>${subtotal.toFixed(2)}</td>
-                      <td style={styles.td}><strong>${totalDue.toFixed(2)}</strong></td>
+                      <td style={styles.td}>${totalDue.toFixed(2)}</td>
                     </tr>
                   )
                 })}
+                {/* --- NEW: Grand total row added here --- */}
+                <tr style={styles.totalRow}>
+                    <td style={styles.td}>GRAND TOTAL</td>
+                    <td style={styles.td}>${totalSubtotal.toFixed(2)}</td>
+                    <td style={styles.td}>${grandTotal.toFixed(2)}</td>
+                </tr>
               </tbody>
             </table>
           </section>
