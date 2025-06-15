@@ -1,4 +1,4 @@
-// app/page.tsx
+/ app/page.tsx
 
 "use client";
 
@@ -20,19 +20,31 @@ interface Person {
 }
 
 
-// --- STYLING (So it doesn't look completely broken) ---
+// --- STYLING ---
 const styles: { [key: string]: React.CSSProperties } = {
   container: { fontFamily: 'sans-serif', maxWidth: '800px', margin: '2rem auto', padding: '0 1rem' },
   header: { textAlign: 'center', borderBottom: '1px solid #ddd', paddingBottom: '1rem' },
   section: { backgroundColor: '#f9f9f9', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid #eee' },
   sectionTitle: { marginTop: '0', borderBottom: '2px solid #0070f3', display: 'inline-block', paddingBottom: '0.5rem', marginBottom: '1rem' },
   button: { backgroundColor: '#0070f3', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontSize: '1rem' },
+  // --- NEW STYLE for the delete button ---
+  deleteButton: { 
+    backgroundColor: '#e53e3e', // A red color
+    color: 'white', 
+    border: 'none', 
+    padding: '4px 10px', 
+    borderRadius: '4px', 
+    cursor: 'pointer', 
+    fontSize: '0.8rem',
+    marginLeft: '1rem'
+  },
   input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', marginRight: '10px', width: '200px' },
   table: { width: '100%', borderCollapse: 'collapse', marginTop: '1rem' },
   th: { borderBottom: '2px solid #ddd', padding: '8px', textAlign: 'left', backgroundColor: '#f2f2f2' },
   td: { borderBottom: '1px solid #ddd', padding: '8px' },
   editableInput: { width: '90%', border: '1px solid #ccc', padding: '4px' },
   personCard: { border: '1px solid #ddd', borderRadius: '5px', padding: '1rem', marginBottom: '1rem' },
+  personCardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' },
   spinner: { border: '4px solid #f3f3f3', borderTop: '4px solid #0070f3', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', margin: '20px auto' },
 };
 
@@ -48,13 +60,11 @@ export default function HomePage() {
 
   // --- CORE FUNCTIONS ---
 
-  // 1. Handle image upload and trigger OCR
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { // <-- Added type for 'e'
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsLoading(true);
-    setMenuItems([]); // Clear previous menu
-
+    setMenuItems([]);
     Tesseract.recognize(file, 'eng')
       .then(({ data: { text } }) => {
         parseMenuText(text);
@@ -67,12 +77,10 @@ export default function HomePage() {
       });
   };
 
-  // 2. Parse the raw OCR text into a structured menu
-  const parseMenuText = (text: string) => { // <-- Added type for 'text'
+  const parseMenuText = (text: string) => {
     const lines = text.split('\n');
     const items: MenuItem[] = [];
     const priceRegex = /(\d+(?:[.,]\d{1,2})?)\s*K?$/i;
-
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
       const match = trimmedLine.match(priceRegex);
@@ -88,8 +96,7 @@ export default function HomePage() {
     setMenuItems(items);
   };
   
-  // 3. Handle edits in the menu table
-  const handleMenuChange = (id: number, field: 'item' | 'price', value: string) => { // <-- Added types
+  const handleMenuChange = (id: number, field: 'item' | 'price', value: string) => {
     setMenuItems(currentMenu => 
       currentMenu.map(item => 
         item.id === id ? { ...item, [field]: (field === 'price' ? parseFloat(value) || 0 : value) } : item
@@ -97,15 +104,20 @@ export default function HomePage() {
     );
   };
   
-  // 4. Add a person to the bill
   const addPerson = () => {
     if (newPersonName.trim() === '') return;
     setPeople([...people, { id: Date.now(), name: newPersonName.trim(), orders: [] }]);
     setNewPersonName('');
   };
 
-  // 5. Assign an order to a person
-  const addOrderToPerson = (personId: number, menuItemId: string) => { // <-- Added types
+  // --- NEW FUNCTION to delete a person ---
+  const deletePerson = (personIdToDelete: number) => {
+    setPeople(currentPeople =>
+      currentPeople.filter(person => person.id !== personIdToDelete)
+    );
+  };
+
+  const addOrderToPerson = (personId: number, menuItemId: string) => {
     if (!menuItemId) return;
     const menuItem = menuItems.find(m => m.id === parseInt(menuItemId));
     if(!menuItem) return;
@@ -116,8 +128,7 @@ export default function HomePage() {
     );
   };
   
-  // 6. Calculate subtotal for a single person
-  const calculateSubtotal = (orders: MenuItem[]) => { // <-- Added type for 'orders'
+  const calculateSubtotal = (orders: MenuItem[]) => {
     return orders.reduce((total, order) => total + order.price, 0);
   };
 
@@ -134,6 +145,7 @@ export default function HomePage() {
           <p>Upload a menu, assign orders, and split the bill perfectly.</p>
         </header>
 
+        {/* ... (Step 1 and Step 2 sections remain the same) ... */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Step 1: Upload Menu</h2>
           <input type="file" accept="image/*" onChange={handleImageUpload} />
@@ -151,10 +163,7 @@ export default function HomePage() {
             <p>The AI has extracted the menu. Please correct any errors below.</p>
             <table style={styles.table}>
               <thead>
-                <tr>
-                  <th style={styles.th}>Item</th>
-                  <th style={styles.th}>Price</th>
-                </tr>
+                <tr><th style={styles.th}>Item</th><th style={styles.th}>Price</th></tr>
               </thead>
               <tbody>
                 {menuItems.map(item => (
@@ -167,6 +176,7 @@ export default function HomePage() {
             </table>
           </section>
         )}
+
 
         {menuItems.length > 0 && (
           <section style={styles.section}>
@@ -181,7 +191,11 @@ export default function HomePage() {
                 const subtotal = calculateSubtotal(person.orders);
                 return (
                   <div key={person.id} style={styles.personCard}>
-                    <h3>{person.name} - Subtotal: ${subtotal.toFixed(2)}</h3>
+                    {/* --- UPDATED PART: Person header with delete button --- */}
+                    <div style={styles.personCardHeader}>
+                      <h3>{person.name} - Subtotal: ${subtotal.toFixed(2)}</h3>
+                      <button style={styles.deleteButton} onClick={() => deletePerson(person.id)}>Delete</button>
+                    </div>
                     <ul>
                       {person.orders.map((order, index) => (
                         <li key={index}>{order.item} - ${order.price.toFixed(2)}</li>
@@ -198,6 +212,7 @@ export default function HomePage() {
           </section>
         )}
         
+        {/* ... (Step 4 section remains the same) ... */}
         {people.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 4: Final Summary</h2>
@@ -210,11 +225,7 @@ export default function HomePage() {
             
             <table style={styles.table}>
               <thead>
-                <tr>
-                  <th style={styles.th}>Name</th>
-                  <th style={styles.th}>Subtotal</th>
-                  <th style={styles.th}>Total Due (inc. Tax & Tip)</th>
-                </tr>
+                <tr><th style={styles.th}>Name</th><th style={styles.th}>Subtotal</th><th style={styles.th}>Total Due (inc. Tax & Tip)</th></tr>
               </thead>
               <tbody>
                 {people.map(person => {
