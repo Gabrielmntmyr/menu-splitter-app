@@ -1,5 +1,3 @@
-// app/page.tsx
-
 "use client";
 
 import { useState } from 'react';
@@ -35,7 +33,6 @@ const styles: { [key: string]: React.CSSProperties } = {
   table: { width: '100%', borderCollapse: 'collapse', marginTop: '1rem' },
   th: { borderBottom: '2px solid #ddd', padding: '8px', textAlign: 'left', backgroundColor: '#f2f2f2' },
   td: { borderBottom: '1px solid #ddd', padding: '8px' },
-  // --- NEW STYLE for the total row ---
   totalRow: { borderTop: '2px solid #333', fontWeight: 'bold' },
   editableInput: { width: '90%', border: '1px solid #ccc', padding: '4px' },
   personCard: { border: '1px solid #ddd', borderRadius: '5px', padding: '1rem', marginBottom: '1rem' },
@@ -126,7 +123,6 @@ export default function HomePage() {
     return orders.reduce((total, order) => total + order.price, 0);
   };
   
-  // --- NEW: Calculate grand totals ---
   const totalSubtotal = people.reduce((acc, person) => acc + calculateSubtotal(person.orders), 0);
   const grandTotal = totalSubtotal * (1 + tax / 100 + tip / 100);
 
@@ -143,7 +139,6 @@ export default function HomePage() {
           <p>Upload a menu, assign orders, and split the bill perfectly.</p>
         </header>
 
-        {/* ... (Step 1, 2, and 3 sections remain the same) ... */}
         <section style={styles.section}>
           <h2 style={styles.sectionTitle}>Step 1: Upload Menu</h2>
           <input type="file" accept="image/*" onChange={handleImageUpload} />
@@ -200,7 +195,6 @@ export default function HomePage() {
           </section>
         )}
         
-        {/* --- UPDATED: Step 4 now includes a grand total row --- */}
         {people.length > 0 && (
           <section style={styles.section}>
             <h2 style={styles.sectionTitle}>Step 4: Final Summary</h2>
@@ -227,7 +221,6 @@ export default function HomePage() {
                     </tr>
                   )
                 })}
-                {/* --- NEW: Grand total row added here --- */}
                 <tr style={styles.totalRow}>
                     <td style={styles.td}>GRAND TOTAL</td>
                     <td style={styles.td}>${totalSubtotal.toFixed(2)}</td>
